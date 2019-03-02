@@ -71,7 +71,7 @@ base_minor = {
 class Chord:
     def __init__(self, harmstr):
         self.logger = logging.getLogger('hakawb.Chord')
-        self.logger.info('Instantiating chord {}...'.format(harmstr))
+        self.logger.debug('Instantiating chord {}...'.format(harmstr))
         split = harmstr.split(':')
         if len(split) == 2:
             key, harm = split
@@ -105,3 +105,9 @@ class Chord:
         self.logger.debug('Base pitch classes: {}'.format(pc_list))
         pc_list = [(x + key_offset) % 12 for x in pc_list]
         self.logger.debug('Base pitch classes in the right key: {}'.format(pc_list))
+        self.harmstr = harmstr
+        self.harm = harm
+        self.key = key
+        self.inversion = inversion
+        self.pitch_classes = frozenset(pc_list)
+        self.bass = pc_list[inversion]
