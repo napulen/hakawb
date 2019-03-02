@@ -1,0 +1,3 @@
+[submodule "harmparser"]
+	path = harmparser
+	url = https://github.com/napulen/harmparser.git
