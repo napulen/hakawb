@@ -1,5 +1,8 @@
+import logging
 
-major_dictionary = {
+pitch_classes = ['c', 'c#', 'd', 'eb', 'e', 'f', 'f#', 'g', 'ab', 'a', 'bb', 'b']
+
+base_major = {
     # Diatonic major triads
     'I':    [0, 4, 7],
     'ii':   [2, 5, 9],
@@ -20,11 +23,10 @@ major_dictionary = {
     'N':  [1, 5, 8],
     'Lt': [6, 8, 0],
     'Fr': [6, 8, 0, 2],
-    'Gr': [6, 8, 0, 3]
+    'Gn': [6, 8, 0, 3]
 }
 
-
-minor_dictionary = {
+base_minor = {
     # Diatonic natural minor triads
     'i': [0, 3, 7],
     'iio': [2, 5, 8],
@@ -63,5 +65,43 @@ minor_dictionary = {
     'N': [1, 5, 8],
     'Lt': [6, 8, 0],
     'Fr': [6, 8, 0, 2],
-    'Gr': [6, 8, 0, 3]
+    'Gn': [6, 8, 0, 3]
 }
+
+class Chord:
+    def __init__(self, harmstr):
+        self.logger = logging.getLogger('hakawb.Chord')
+        self.logger.info('Instantiating chord {}...'.format(harmstr))
+        split = harmstr.split(':')
+        if len(split) == 2:
+            key, harm = split
+            self.logger.debug('Key:{}, harm:{}'.format(key, harm))
+        else:
+            key = 'C'
+            harm = split[0]
+            self.logger.warn('No key provided, assuming C')
+            self.logger.debug('harm:{}'.format(harm))
+        base_chords = base_minor if key.islower() else base_major
+        key_offset = pitch_classes.index(key.lower())
+        inversion = 0
+        rootpos, firstinv, _ = harm.rpartition('b')
+        if firstinv:
+            self.logger.debug('Chord is in 1st inversion')
+            harm = rootpos
+            inversion = 1
+        else:
+            rootpos, secinv, _ = harm.rpartition('c')
+            if secinv:
+                self.logger.debug('Chord is in 2nd inversion')
+                harm = rootpos
+                inversion = 2
+            else:
+                rootpos, thirdinv, _ = harm.rpartition('d')
+                if thirdinv:
+                    self.logger.debug('Chord is in 3rd inversion')
+                    harm = rootpos
+                    inversion = 3
+        pc_list = base_chords[harm]
+        self.logger.debug('Base pitch classes: {}'.format(pc_list))
+        pc_list = [(x + key_offset) % 12 for x in pc_list]
+        self.logger.debug('Base pitch classes in the right key: {}'.format(pc_list))
