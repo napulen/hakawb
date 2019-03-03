@@ -1,4 +1,5 @@
 import logging
+import numpy as np
 import pprint as pp
 import mido
 import sys
@@ -57,8 +58,8 @@ def get_notes_from_midi(midi_file):
     return notes
 
 if __name__ == '__main__':
-    input_notes = [60, 62, 64, 65, 67, 69, 71, 60]
-    if sys.argv[1]:
+    input_notes = [60, 64, 67]
+    if len(sys.argv) == 2:
         input_notes = get_notes_from_midi(sys.argv[1])
     logger = initLogger()
     # Pre-compute all the chord dictionary
@@ -68,55 +69,25 @@ if __name__ == '__main__':
     all_pc_sets = add_pc_sets(major_pc_sets, minor_pc_sets)
     # Now parse the input
     bass = 128 # Larger than any midi note number for initialization
-    segments = []
+    pc_heat = {pc: [] for pc in all_pc_sets.keys()}
     basses = []
-    current_segment = []
-    current_set = set()
-    relevant_sets = all_pc_sets.keys()
-    for note in input_notes:
+    for note in input_notes[:40]:
         logger.info("Parsing note {}".format(note))
-        note_pc = note % 12
-        tmp_segment = current_segment[:]
-        tmp_set = current_set
-        tmp_segment.append(note)
-        tmp_set = tmp_set | {note_pc}
-        query_sets = [pc for pc in relevant_sets if tmp_set <= pc]
-        logger.info('Possible pitch-class sets: {}'.format(len(query_sets)))
+        note_pc = {note % 12}
+        query_sets = [pc for pc in pc_heat.keys() if note_pc <= pc]
         logger.debug(query_sets)
-        if len(query_sets) > 0:
-            logger.info('Successfully part of the same segment')
-            relevant_sets = query_sets
-            current_segment = tmp_segment
-            current_set = tmp_set
-        else:
-            logger.info('This note cannot belong to the same segment')
-            # Log everything until this note
-            segments.append(current_segment)
-            basses.append(bass)
-            logger.info('Segments: {}'.format(segments))
-            logger.info('Basses: {}'.format(basses))
-            # Now start a new segment
-            current_segment = [note]
-            current_set = {note_pc}
-            relevant_sets = all_pc_sets.keys()
-            bass = 128
+        for pc_set, l in pc_heat.items():
+            if pc_set in query_sets:
+                l.append(1)
+            else:
+                l.append(0)
         if note < bass:
             logger.info("This note became the new bass")
             bass = note
-        chord_query = []
-        for pc_set in relevant_sets:
-            chordsobjs = all_pc_sets[pc_set]
-            for chord in chordsobjs:
-                if (bass % 12) == chord.bass:
-                    chord_query.append(chord.harmstr)
-        logger.info('Possible chords: {}'.format(len(chord_query)))
-        logger.info(chord_query)
-    if current_segment:
-        segments.append(current_segment)
         basses.append(bass)
-    logger.info('Segments: {}'.format(segments))
-    logger.info('Basses: {}'.format(basses))
-
+    for pc_set, l in pc_heat.items():
+        logger.info('{:<30} {}'.format(str(pc_set), l))
+    logger.info('{:<30} {}'.format('Basses', basses))
 
 
 
