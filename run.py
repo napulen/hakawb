@@ -61,6 +61,9 @@ def get_notes_from_midi(midi_file):
 def heat_formula(x, alpha):
     return max(-0.5 * (math.tanh(alpha*x - 4) - 1), 0.01)
 
+def heat_formula_linear(x, alpha):
+    return max(-(x/alpha) + 1, 0.0)
+
 if __name__ == '__main__':
     input_notes = [60, 64, 67, 59, 62, 65, 67]
     if len(sys.argv) == 2:
@@ -75,14 +78,14 @@ if __name__ == '__main__':
     bass = 128 # Larger than any midi note number for initialization
     pc_last_active = [3] * 12
     pc_heat = {pc: [] for pc in range(12)}
-    alpha = 2
+    alpha = 4
     basses = []
     for note in input_notes[:40]:
         logger.info("Parsing note {}".format(note))
         note_pc = note % 12
         pc_last_active = [x+1 for x in pc_last_active]
         pc_last_active[note_pc] = 0
-        pc_current_heat = [heat_formula(x, alpha) for x in pc_last_active]
+        pc_current_heat = [heat_formula_linear(x, alpha) for x in pc_last_active]
         for pc, l in pc_heat.items():
             l.append(pc_current_heat[pc])
         if note < bass:
