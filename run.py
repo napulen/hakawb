@@ -4,6 +4,7 @@ import pprint as pp
 import mido
 import sys
 import math
+import chord
 
 def initLogger():
     logger = logging.getLogger('hakawb')
@@ -58,34 +59,39 @@ def get_notes_from_midi(midi_file):
              and msg.velocity > 0]
     return notes
 
-def heat_formula(x, alpha):
+def heat_tanh(x, alpha):
     return max(-0.5 * (math.tanh(alpha*x - 4) - 1), 0.01)
 
-def heat_formula_linear(x, alpha):
+def heat_linear(x, alpha):
     return max(-(x/alpha) + 1, 0.0)
+
+def heat_exponential(x, alpha):
+    return max(-alpha**x + 2, 0.0)
+
+def heat_function(x, alpha):
+    return heat_formula_exponential(x, alpha)
 
 if __name__ == '__main__':
     input_notes = [60, 64, 67, 59, 62, 65, 67]
     if len(sys.argv) == 2:
         input_notes = get_notes_from_midi(sys.argv[1])
     logger = initLogger()
-    # Pre-compute all the chord dictionary
-    import chord
+    # Pre-compute all the chord dictionary    
     major_pc_sets = get_pc_sets(chord.base_major, major_keys)
     minor_pc_sets = get_pc_sets(chord.base_minor, minor_keys)
     all_pc_sets = add_pc_sets(major_pc_sets, minor_pc_sets)
     # Now parse the input
     bass = 128 # Larger than any midi note number for initialization
-    pc_last_active = [3] * 12
+    pc_last_active = [128] * 12
     pc_heat = {pc: [] for pc in range(12)}
-    alpha = 4
+    alpha = 1.245
     basses = []
     for note in input_notes[:40]:
         logger.info("Parsing note {}".format(note))
         note_pc = note % 12
         pc_last_active = [x+1 for x in pc_last_active]
         pc_last_active[note_pc] = 0
-        pc_current_heat = [heat_formula_linear(x, alpha) for x in pc_last_active]
+        pc_current_heat = [heat_function(x, alpha) for x in pc_last_active]
         for pc, l in pc_heat.items():
             l.append(pc_current_heat[pc])
         if note < bass:
