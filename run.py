@@ -97,10 +97,13 @@ if __name__ == '__main__':
     max_activations = {}
     basses = []
     for msg in mid:
-        if msg.type != 'note_on':
+        if msg.type != 'note_on' and msg.type != 'note_off':
             continue
         note = msg.note
-        note_on = 1 if msg.velocity > 0 else 0
+        if msg.type == 'note_on':
+            note_on = 1 if msg.velocity > 0 else 0
+        elif msg.type == 'note_off':
+            note_on = 0
         delta_t = msg.time
         t += delta_t
         logger.info("Parsing note {}".format(note))
@@ -123,7 +126,8 @@ if __name__ == '__main__':
                 max_activation = (pc_set.activation, pc_set.name)
             pc_set_activations[pc_set.name].append('{:.2f}'.format
             (pc_set.activation))
-        max_activations[t] = max_activation
+        if note_on:
+            max_activations[t] = max_activation
 
     for pc in pc_heat_dict:
         logger.info('{}: {}'.format(pc, pc_heat_dict[pc]))
