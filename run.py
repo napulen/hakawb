@@ -5,6 +5,8 @@ import mido
 import sys
 import math
 import chord
+import pcset
+import pitchclass
 
 def initLogger():
     logger = logging.getLogger('hakawb')
@@ -39,17 +41,18 @@ def get_pc_sets(base, keys):
     return pc_sets
 
 
-def add_pc_sets(a, b):
-    c = {}
-    c_keys = list(a.keys()) + list(b.keys())
-    for pc_set in set(c_keys):
-        harms = []
-        if pc_set in a:
-            harms.extend(a[pc_set])
-        if pc_set in b:
-            harms.extend(b[pc_set])
-        c[pc_set] = harms
-    return c
+def instantiate_pc_sets(major, minor):
+    pc_sets = []
+    pc_set_keys = list(major.keys()) + list(minor.keys())
+    for pc_set in sorted(set(pc_set_keys)):
+        chords = []
+        if pc_set in major:
+            chords.extend(major[pc_set])
+        if pc_set in minor:
+            chords.extend(minor[pc_set])
+        pc_set_obj = pcset.PitchClassSet(pc_set, chords)
+        pc_sets.append(pc_set_obj)
+    return pc_sets
 
 def get_notes_from_midi(midi_file):
     """Returns a list of notes from the note_on events of a MIDI file"""
@@ -69,46 +72,64 @@ def heat_exponential(x, alpha):
     return max(-alpha**x + 2, 0.0)
 
 def heat_function(x, alpha):
-    return heat_formula_exponential(x, alpha)
+    return heat_exponential(x, alpha)
 
 if __name__ == '__main__':
-    input_notes = [60, 64, 67, 59, 62, 65, 67]
+    input_notes = [
+        (0.0, 60, 1), (0.0, 64, 1), (0.0, 67, 1),
+        (3.0, 60, 0), (0.0, 64, 0), (0.0, 67, 0),
+        (0.5, 59, 1), (0.5, 62, 1),
+        (0.5, 59, 0), (0.5, 62, 0)]
     if len(sys.argv) == 2:
-        input_notes = get_notes_from_midi(sys.argv[1])
+        mid = mido.MidiFile(sys.argv[1])
     logger = initLogger()
-    # Pre-compute all the chord dictionary    
+    # Pre-compute all the chord dictionary
     major_pc_sets = get_pc_sets(chord.base_major, major_keys)
     minor_pc_sets = get_pc_sets(chord.base_minor, minor_keys)
-    all_pc_sets = add_pc_sets(major_pc_sets, minor_pc_sets)
+    pc_sets = instantiate_pc_sets(major_pc_sets, minor_pc_sets)
     # Now parse the input
     bass = 128 # Larger than any midi note number for initialization
-    pc_last_active = [128] * 12
-    pc_heat = {pc: [] for pc in range(12)}
-    alpha = 1.245
+    pc_on = [0] * 12
+    t = 0
+    pc_heat_dict = {}
+    pc_heat_objs = [pitchclass.PitchClass() for x in range(12)]
+    pc_set_activations = {pc_set.name: [] for pc_set in pc_sets}
+    max_activations = {}
     basses = []
-    for note in input_notes[:40]:
+    for msg in mid:
+        if msg.type != 'note_on':
+            continue
+        note = msg.note
+        note_on = 1 if msg.velocity > 0 else 0
+        delta_t = msg.time
+        t += delta_t
         logger.info("Parsing note {}".format(note))
         note_pc = note % 12
-        pc_last_active = [x+1 for x in pc_last_active]
-        pc_last_active[note_pc] = 0
-        pc_current_heat = [heat_function(x, alpha) for x in pc_last_active]
-        for pc, l in pc_heat.items():
-            l.append(pc_current_heat[pc])
+        pc_on[note_pc] = note_on
+        pc_current_heat = [0] * 12
+        for idx, pc in enumerate(pc_heat_objs):
+            pc.update(delta_t, pc_on[idx])
+            pc_current_heat[idx] = pc.heat
+        pc_heat_dict[t] = pc_current_heat
         if note < bass:
             logger.info("This note became the new bass")
             bass = note
         basses.append(bass)
-    for l in pc_heat.values():
-        s = ''
-        for n in l:
-            s += '{:.1f}  '.format(n)
-        logger.info(s)
+
+        max_activation = (0, 'none')
+        for pc_set in pc_sets:
+            pc_set.compute_activation(pc_current_heat)
+            if pc_set.activation > max_activation[0]:
+                max_activation = (pc_set.activation, pc_set.name)
+            pc_set_activations[pc_set.name].append('{:.2f}'.format
+            (pc_set.activation))
+        max_activations[t] = max_activation
+
+    for pc in pc_heat_dict:
+        logger.info('{}: {}'.format(pc, pc_heat_dict[pc]))
     logger.info('{:<30} {}'.format('Basses', basses))
+    for name, activation_list in pc_set_activations.items():
+        logger.info('{:<30} {}'.format(name, activation_list))
 
-
-
-
-
-
-
-
+    for pc_activation in max_activations:
+        logger.info('{}: {}'.format(pc_activation, max_activations[pc_activation]))
