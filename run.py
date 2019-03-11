@@ -7,6 +7,7 @@ import math
 import chord
 import pcset
 import pitchclass
+import chordlabels
 
 def initLogger():
     logger = logging.getLogger('hakawb')
@@ -54,14 +55,6 @@ def instantiate_pc_sets(major, minor):
         pc_sets.append(pc_set_obj)
     return pc_sets
 
-def get_notes_from_midi(midi_file):
-    """Returns a list of notes from the note_on events of a MIDI file"""
-    mid = mido.MidiFile(midi_file)
-    notes = [msg.note for msg in mid
-             if msg.type == 'note_on'
-             and msg.velocity > 0]
-    return notes
-
 def heat_tanh(x, alpha):
     return max(-0.5 * (math.tanh(alpha*x - 4) - 1), 0.01)
 
@@ -75,11 +68,6 @@ def heat_function(x, alpha):
     return heat_exponential(x, alpha)
 
 if __name__ == '__main__':
-    input_notes = [
-        (0.0, 60, 1), (0.0, 64, 1), (0.0, 67, 1),
-        (3.0, 60, 0), (0.0, 64, 0), (0.0, 67, 0),
-        (0.5, 59, 1), (0.5, 62, 1),
-        (0.5, 59, 0), (0.5, 62, 0)]
     if len(sys.argv) == 2:
         mid = mido.MidiFile(sys.argv[1])
     logger = initLogger()
@@ -123,7 +111,7 @@ if __name__ == '__main__':
         for pc_set in pc_sets:
             pc_set.compute_activation(pc_current_heat)
             if pc_set.activation > max_activation[0]:
-                max_activation = (pc_set.activation, pc_set.name)
+                max_activation = (pc_set.activation, pc_set.pc_set)
             pc_set_activations[pc_set.name].append('{:.2f}'.format
             (pc_set.activation))
         if note_on:
@@ -136,4 +124,4 @@ if __name__ == '__main__':
         logger.info('{:<30} {}'.format(name, activation_list))
 
     for pc_activation in max_activations:
-        logger.info('{}: {}'.format(pc_activation, max_activations[pc_activation]))
+        logger.info('{}: {} - {}'.format(pc_activation, max_activations[pc_activation], chordlabels.chord_labels[max_activations[pc_activation][1]]))

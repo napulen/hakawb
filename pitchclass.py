@@ -12,11 +12,9 @@ class PitchClass:
         self.heat_function = self.release
 
     def attack(self, alpha=3):
-        #return max(-self.internal_t/4.0 + 1.0, 0.5)
         return max(-(math.tanh(alpha*self.internal_t - 3) - 1) / 2.0, 0.5)
 
     def release(self, alpha=3):
-        #return max(-self.internal_t/2.0 + 0.5, 0.0)
         return max(-(math.tanh(alpha*self.internal_t) - 1) / 2.0, 0.0)
 
     def update(self, delta_t, note_on):
