@@ -73,6 +73,7 @@ class Chord:
         self.logger = logging.getLogger('hakawb.Chord')
         self.logger.debug('Instantiating chord {}...'.format(harmstr))
         split = harmstr.split(':')
+        # Expecting chords in the form Key:Harm, e.g., C:Vc
         if len(split) == 2:
             key, harm = split
             self.logger.debug('Key:{}, harm:{}'.format(key, harm))
@@ -81,6 +82,7 @@ class Chord:
             harm = split[0]
             self.logger.warn('No key provided, assuming C')
             self.logger.debug('harm:{}'.format(harm))
+        # All lower-case harm strings mean minor mode
         base_chords = base_minor if key.islower() else base_major
         key_offset = pitch_classes.index(key.lower())
         inversion = 0
@@ -88,7 +90,7 @@ class Chord:
         if firstinv:
             self.logger.debug('Chord is in 1st inversion')
             harm = rootpos
-            inversion = 1
+            inversionY = 1
         else:
             rootpos, secinv, _ = harm.rpartition('c')
             if secinv:

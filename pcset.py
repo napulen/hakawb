@@ -15,21 +15,26 @@ class PitchClassSet:
         self.activation = 0
         if chords:
             self.chords = chords
+            self.logger.debug(self)
         else:
             self.chords = []
 
     def __str__(self):
-        chordlist = [c.harmstr for c in self.chords if self.chords]
-        return '{:<30}: {}'.format(self.name, chordlist)
+        ret = '{}\n'.format(self.name)
+        for c in self.chords:
+            ret += '\t{}\n'.format(c.harmstr)
+        return ret
 
     def add_chords(self, chords):
         if chords:
             self.chords.extend(chords)
 
     def strength_formula(self, heat):
+        # Notes have a bit more effect on the positive contribution...
         return math.sqrt(heat)
 
     def relevance_formula(self, heat):
+        # but a linear effect (more negative) on the negative contribution...
         return heat
 
     def compute_strength(self, pc_heat):
@@ -47,7 +52,6 @@ class PitchClassSet:
             relevance.append(self.relevance_formula(pc_heat[i]))
         self.relevance = 1 - (sum(relevance) / pcs_prime)
         return self.relevance
-
 
     def compute_activation(self, pc_heat):
         self.compute_strength(pc_heat)

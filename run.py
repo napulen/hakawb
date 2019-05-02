@@ -41,7 +41,6 @@ def get_pc_sets(base, keys):
                 pc_sets[c.pitch_classes] = pc_set
     return pc_sets
 
-
 def instantiate_pc_sets(major, minor):
     pc_sets = []
     pc_set_keys = list(major.keys()) + list(minor.keys())
