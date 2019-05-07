@@ -90,7 +90,8 @@ if __name__ == '__main__':
     for msg in mid:
         if msg.type != 'note_on' and msg.type != 'note_off':
             continue
-        pc_heat = midi2pcheat.parse_midi_event(msg)
+        midi2pcheat.parse_midi_event(msg)
+        pc_heat = midi2pcheat.pc_heat_dict[midi2pcheat.t]
         logger.debug(pc_heat)
     for t, val in midi2pcheat.pc_heat_dict.items():
         logger.info('{}: {}'.format(t, val))

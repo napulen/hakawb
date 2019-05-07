@@ -4,7 +4,7 @@ import math
 class NoteAttack:
     def __init__(self, decay_damping=0.8, release_damping=0.1):
         self.logger = logging.getLogger('hakawb.NoteHeat')
-        self.logger.info('Creating new NoteHeat object')
+        self.logger.info('new NoteAttack() <- decay_damping={}, release_damping={}'.format(decay_damping, release_damping))
         self.heat = 1.0
         self.internal_t = 0
         self.offset = 0
@@ -12,7 +12,15 @@ class NoteAttack:
         self.release_damping = release_damping
         self.damping = self.decay_damping
 
+    def attack(self):
+        self.logger.debug('attack()')
+        self.damping = self.decay_damping
+        self.offset = 0
+        self.internal_t = 0
+        self.heat = 1.0
+
     def release(self):
+        self.logger.debug('release()')
         self.damping = self.release_damping
         self.offset = math.log10(self.heat) / math.log10(self.release_damping)
         self.internal_t = 0
@@ -25,11 +33,12 @@ class Midi2PitchClassHeat:
     def __init__(self, scaling=False):
         self.logger = logging.getLogger('hakawb.Midi2PitchClassHeat')
         self.logger.info('Creating Midi2PitchClassHeat object')
-        self.noteheat_dict = {}
-        self.notestatus_dict = {}
+        self.noteattacks_dict = {}
         self.pc_heat_dict = {}
+        self.notes_to_release = []
         self.scaling = scaling
         self.t = 0
+        self.dt = 0
 
     def get_midi_event_id(self, msg):
         # The idea is that a related note_on and note_off
@@ -39,38 +48,52 @@ class Midi2PitchClassHeat:
     def get_pitchclass_from_note_id(self, note_id):
         return int(note_id.split('_')[-1])
 
-    def iterate_over_noteheats(self):
+    def iterate_over_noteattacks(self):
         pc_heat = [0] * 12
-        for note_id, noteheat in self.noteheat_dict.items():
-            noteheat.update(self.t, self.notestatus_dict[note_id])
+        self.logger.debug(list(self.noteattacks_dict.keys()))
+        for note_id, noteattack in self.noteattacks_dict.items():
+            noteattack.update_heat(self.dt)
             note_pc = self.get_pitchclass_from_note_id(note_id)
-            pc_heat[note_pc] += noteheat.heat
+            pc_heat[note_pc] += noteattack.heat
+            self.logger.debug('{}: {}'.format(note_id, noteattack.heat))
         self.pc_heat_dict[self.t] = pc_heat
+
+    def release_scheduled(self):
+        # Release is done until the heat for this timestep has been computed
+        for note_id in self.notes_to_release:
+            noteattack = self.noteattacks_dict[note_id]
+            noteattack.release()
+        self.notes_to_release = []
 
     def parse_midi_event(self, msg):
         # Just care about note_on/note_off events
         if msg.type != 'note_on' and msg.type != 'note_off':
             return
+        self.logger.debug('Parsing {}'.format(msg))
         note_id = self.get_midi_event_id(msg)
+        self.dt = msg.time
+        self.t += self.dt
+        self.logger.debug('t={}'.format(self.t))
+        # Note released
         if msg.type == 'note_off' or msg.velocity == 0:
-            note_on = False
+            if note_id not in self.noteattacks_dict:
+                self.logger.warning('{} has been released but it seems that it is not playing'.format(note_id))
+            else:
+                noteattack = self.noteattacks_dict[note_id]
+                self.notes_to_release.append(note_id)
+        # Note attacked
         else:
-            note_on = True
-        self.t += msg.time
-        self.logger.debug('{} {} {}'.format(self.t, note_id, note_on))
-        if note_id in self.noteheat_dict:
-            noteheat = self.noteheat_dict[note_id]
-        else:
-            noteheat = NoteHeat()
-            self.noteheat_dict[note_id] = noteheat
-        # noteheat = self.noteheat_dict.get(note_id, NoteHeat())
-        # self.noteheat_dict[note_id] = noteheat
-        self.notestatus_dict[note_id] = note_on
-        self.logger.debug(list(self.noteheat_dict.keys()))
-        self.iterate_over_noteheats()
+            if note_id in self.noteattacks_dict:
+                self.logger.warning('{} has been attacked but it seems that it was already playing'.format(note_id))
+                noteattack = self.noteattacks_dict[note_id]
+                noteattack.attack()
+            else:
+                self.noteattacks_dict[note_id] = NoteAttack()
+        self.iterate_over_noteattacks()
         if self.scaling:
             self.logger.info('User wants scaling. TODO')
-        return self.pc_heat_dict[self.t]
+        self.release_scheduled()
+
 
 
     if __name__ == '__main__':
