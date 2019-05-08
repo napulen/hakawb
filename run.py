@@ -10,6 +10,9 @@ import pitchclass
 import chordlabels
 import heat
 
+major_keys = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B']
+minor_keys = [k.lower() for k in major_keys]
+
 def initLogger():
     logger = logging.getLogger('hakawb')
     logger.setLevel(logging.DEBUG)
@@ -20,9 +23,6 @@ def initLogger():
     logger.addHandler(fh)
     logger.addHandler(ch)
     return logger
-
-major_keys = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B']
-minor_keys = [k.lower() for k in major_keys]
 
 def get_pc_sets(base, keys):
     pc_sets = {}
@@ -55,18 +55,6 @@ def instantiate_pc_sets(major, minor):
         pc_sets.append(pc_set_obj)
     return pc_sets
 
-# def heat_tanh(x, alpha):
-#     return max(-0.5 * (math.tanh(alpha*x - 4) - 1), 0.01)
-
-# def heat_linear(x, alpha):
-#     return max(-(x/alpha) + 1, 0.0)
-
-# def heat_exponential(x, alpha):
-#     return max(-alpha**x + 2, 0.0)
-
-# def heat_function(x, alpha):
-#     return heat_exponential(x, alpha)
-
 if __name__ == '__main__':
     if len(sys.argv) == 2:
         mid = mido.MidiFile(sys.argv[1])
@@ -76,45 +64,42 @@ if __name__ == '__main__':
     minor_pc_sets = get_pc_sets(chord.base_minor, minor_keys)
     pc_sets = instantiate_pc_sets(major_pc_sets, minor_pc_sets)
     # Now parse the input
-    # bass = 128 # Larger than any midi note number for initialization
+    bass = 128 # Larger than any midi note number for initialization
     # pc_on = [0] * 12
     # t = 0
-    # pc_heat_dict = {}
+    pc_heat_dict = {}
     # pc_heat_objs = [pitchclass.PitchClass() for x in range(12)]
-    # pc_set_activations = {pc_set.name: [] for pc_set in pc_sets}
-    # max_activations = {}
-    # basses = []
-
-    midi2pcheat = heat.Midi2PitchClassHeat()
+    pc_set_activations = {pc_set.name: [] for pc_set in pc_sets}
+    max_activations = {}
+    basses = []
+    midi2pcheat = heat.Midi2PitchClassHeat(decay_damping=0.3, release_damping=0.05)
 
     for msg in mid:
         if msg.type != 'note_on' and msg.type != 'note_off':
             continue
         midi2pcheat.parse_midi_event(msg)
-        pc_heat = midi2pcheat.pc_heat_dict[midi2pcheat.t]
+        pc_heat = midi2pcheat.pc_heat
         logger.debug(pc_heat)
-    for t, val in midi2pcheat.pc_heat_dict.items():
-        logger.info('{}: {}'.format(t, val))
-    #     if note < bass:
-    #         logger.info("This note became the new bass")
-    #         bass = note
-    #     basses.append(bass)
+        if msg.note < bass:
+            logger.info("This note became the new bass")
+            bass = msg.note
+        basses.append(bass)
 
-    #     max_activation = (0, 'none')
-    #     for pc_set in pc_sets:
-    #         pc_set.compute_activation(pc_current_heat)
-    #         if pc_set.activation > max_activation[0]:
-    #             max_activation = (pc_set.activation, pc_set.pc_set)
-    #         pc_set_activations[pc_set.name].append('{:.2f}'.format
-    #         (pc_set.activation))
-    #     if note_on:
-    #         max_activations[t] = max_activation
+        max_activation = (0, 'none')
+        for pc_set in pc_sets:
+            pc_set.compute_activation(pc_heat)
+            if pc_set.activation > max_activation[0]:
+                max_activation = (pc_set.activation, pc_set.pc_set)
+            pc_set_activations[pc_set.name].append('{:.2f}'.format
+            (pc_set.activation))
+        if msg.type != 'note_off' and msg.velocity > 0:
+            max_activations[midi2pcheat.t] = max_activation
 
-    # for pc in pc_heat_dict:
-    #     logger.info('{}: {}'.format(pc, pc_heat_dict[pc]))
-    # logger.info('{:<30} {}'.format('Basses', basses))
-    # for name, activation_list in pc_set_activations.items():
-    #     logger.info('{:<30} {}'.format(name, activation_list))
+    for pc in pc_heat_dict:
+        logger.info('{}: {}'.format(pc, pc_heat_dict[pc]))
+    logger.info('{:<30} {}'.format('Basses', basses))
+    for name, activation_list in pc_set_activations.items():
+        logger.info('{:<30} {}'.format(name, activation_list))
 
-    # for pc_activation in max_activations:
-    #     logger.info('{}: {} - {}'.format(pc_activation, max_activations[pc_activation], chordlabels.chord_labels[max_activations[pc_activation][1]]))
+    for pc_activation in max_activations:
+        logger.info('{}: {} - {}'.format(pc_activation, max_activations[pc_activation], chordlabels.chord_labels[max_activations[pc_activation][1]]))
