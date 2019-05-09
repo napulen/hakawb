@@ -72,7 +72,7 @@ if __name__ == '__main__':
     pc_set_activations = {pc_set.name: [] for pc_set in pc_sets}
     max_activations = {}
     basses = []
-    midi2pcheat = heat.Midi2PitchClassHeat(decay_damping=0.3, release_damping=0.05)
+    midi2pcheat = heat.Midi2PitchClassHeat(decay_damping=0.3, release_damping=0.05, scaling=True)
 
     for msg in mid:
         if msg.type != 'note_on' and msg.type != 'note_off':

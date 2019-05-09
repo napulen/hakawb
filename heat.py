@@ -52,7 +52,7 @@ class Midi2PitchClassHeat:
         return int(note_id.split('_')[-1])
 
     def iterate_over_noteattacks(self):
-        self.pc_heat = [0] * 12
+        self.pc_heat = [0.0] * 12
         for note_id, noteattack in self.noteattacks_dict.items():
             noteattack.update_heat(self.dt)
             note_pc = self.get_pitchclass_from_note_id(note_id)
@@ -63,16 +63,17 @@ class Midi2PitchClassHeat:
 
     def heat_non_linearity(self, heat):
         if heat >= 1:
-            return (1-x) / math.sqrt((1-x)**2 + 1) + 1
+            return (heat-1) / math.sqrt((heat-1)**2 + 1) + 1
         else:
             return heat
 
     def scaling_pitchclass_heat(self):
         self.logger.debug(self.pc_heat)
         self.pc_heat = [self.heat_non_linearity(heat) for heat in self.pc_heat]
+        self.logger.debug(self.pc_heat)
         # If the max value of the pc heat vector is < 1, then don't scale anything
         # else, scale everything accordingly so that max_val == 1.0
-        denominator = min(1.0, max(self.pc_heat))
+        denominator = max(1.0, max(self.pc_heat))
         self.pc_heat = [heat / denominator for heat in self.pc_heat]
 
     def parse_midi_event(self, msg):
@@ -107,8 +108,7 @@ class Midi2PitchClassHeat:
             note_pc = self.get_pitchclass_from_note_id(note_id)
             self.pc_heat[note_pc] += noteattack.heat - substracted_heat
         if self.scaling:
-            self.logger.info('User wants scaling. TODO')
-
+            self.scaling_pitchclass_heat()
 
     if __name__ == '__main__':
         import matplotlib.pyplot as plt
