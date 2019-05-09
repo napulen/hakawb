@@ -29,6 +29,7 @@ class NoteAttack:
         self.internal_t += delta_t
         self.heat = self.damping ** (self.internal_t + self.offset)
 
+
 class Midi2PitchClassHeat:
     def __init__(self, scaling=False, decay_damping=0.8, release_damping=0.1):
         self.logger = logging.getLogger('hakawb.Midi2PitchClassHeat')
@@ -58,6 +59,21 @@ class Midi2PitchClassHeat:
             self.pc_heat[note_pc] += noteattack.heat
             self.logger.debug('{}: {}'.format(note_id, noteattack.heat))
         self.pc_heat_dict[self.t] = self.pc_heat
+
+
+    def heat_non_linearity(self, heat):
+        if heat >= 1:
+            return (1-x) / math.sqrt((1-x)**2 + 1) + 1
+        else:
+            return heat
+
+    def scaling_pitchclass_heat(self):
+        self.logger.debug(self.pc_heat)
+        self.pc_heat = [self.heat_non_linearity(heat) for heat in self.pc_heat]
+        # If the max value of the pc heat vector is < 1, then don't scale anything
+        # else, scale everything accordingly so that max_val == 1.0
+        denominator = min(1.0, max(self.pc_heat))
+        self.pc_heat = [heat / denominator for heat in self.pc_heat]
 
     def parse_midi_event(self, msg):
         # Just care about note_on/note_off events
