@@ -9,6 +9,7 @@ import pcset
 import pitchclass
 import chordlabels
 import heat
+import midi_reverser
 
 major_keys = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B']
 minor_keys = [k.lower() for k in major_keys]
@@ -19,7 +20,7 @@ def initLogger():
     fh = logging.FileHandler('hakawb.log', 'w')
     fh.setLevel(logging.DEBUG)
     ch = logging.StreamHandler()
-    ch.setLevel(logging.INFO)
+    ch.setLevel(logging.ERROR)
     logger.addHandler(fh)
     logger.addHandler(ch)
     return logger
@@ -65,18 +66,17 @@ if __name__ == '__main__':
     pc_sets = instantiate_pc_sets(major_pc_sets, minor_pc_sets)
     # Now parse the input
     bass = 128 # Larger than any midi note number for initialization
-    # pc_on = [0] * 12
-    # t = 0
     pc_heat_dict = {}
-    # pc_heat_objs = [pitchclass.PitchClass() for x in range(12)]
     pc_set_activations = {pc_set.name: [] for pc_set in pc_sets}
     max_activations = {}
     basses = []
     midi2pcheat = heat.Midi2PitchClassHeat(decay_damping=0.3, release_damping=0.05, scaling=True)
+    reverser = midi_reverser.MidiReverser()
 
     for msg in mid:
         if msg.type != 'note_on' and msg.type != 'note_off':
             continue
+        reverser.register_event(msg)
         midi2pcheat.parse_midi_event(msg)
         pc_heat = midi2pcheat.pc_heat
         logger.debug(pc_heat)
@@ -84,16 +84,13 @@ if __name__ == '__main__':
             logger.info("This note became the new bass")
             bass = msg.note
         basses.append(bass)
-
         max_activation = (0, 'none')
         for pc_set in pc_sets:
             pc_set.compute_activation(pc_heat)
             if pc_set.activation > max_activation[0]:
                 max_activation = (pc_set.activation, pc_set.pc_set)
-            pc_set_activations[pc_set.name].append('{:.2f}'.format
-            (pc_set.activation))
-        if msg.type != 'note_off' and msg.velocity > 0:
-            max_activations[midi2pcheat.t] = max_activation
+            pc_set_activations[pc_set.name].append('{:.2f}'.format(pc_set.activation))
+        max_activations[midi2pcheat.t] = max_activation
 
     for pc in pc_heat_dict:
         logger.info('{}: {}'.format(pc, pc_heat_dict[pc]))
@@ -103,3 +100,42 @@ if __name__ == '__main__':
 
     for pc_activation in max_activations:
         logger.info('{}: {} - {}'.format(pc_activation, max_activations[pc_activation], chordlabels.chord_labels[max_activations[pc_activation][1]]))
+
+    forward_labels = [chordlabels.chord_labels[max_activations[pc_activation][1]] for pc_activation in max_activations]
+
+    pc_heat_dict = {}
+    pc_set_activations = {pc_set.name: [] for pc_set in pc_sets}
+    max_activations = {}
+    midi2pcheat = heat.Midi2PitchClassHeat(decay_damping=0.3, release_damping=0.05, scaling=True)
+    for msg in reverser.reverse():
+        if msg.type != 'note_on' and msg.type != 'note_off':
+            continue
+        midi2pcheat.parse_midi_event(msg)
+        pc_heat = midi2pcheat.pc_heat
+        logger.debug(pc_heat)
+        max_activation = (0, 'none')
+        for pc_set in pc_sets:
+            pc_set.compute_activation(pc_heat)
+            if pc_set.activation > max_activation[0]:
+                max_activation = (pc_set.activation, pc_set.pc_set)
+            pc_set_activations[pc_set.name].append('{:.2f}'.format(pc_set.activation))
+        max_activations[midi2pcheat.t] = max_activation
+
+    for pc in pc_heat_dict:
+        logger.info('{}: {}'.format(pc, pc_heat_dict[pc]))
+    for name, activation_list in pc_set_activations.items():
+        logger.info('{:<30} {}'.format(name, activation_list))
+
+    for pc_activation in max_activations:
+        logger.info('{}: {} - {}'.format(pc_activation, max_activations[pc_activation], chordlabels.chord_labels[max_activations[pc_activation][1]]))
+
+    backward_labels = [chordlabels.chord_labels[max_activations[pc_activation][1]] for pc_activation in max_activations]
+    backward_labels = list(reversed(backward_labels))
+
+    for i in range(len(forward_labels)):
+        print('{:<10}'.format(forward_labels[i]), end='')
+
+    print()
+
+    for i in range(len(backward_labels)):
+        print('{:<10}'.format(backward_labels[i]), end='')
