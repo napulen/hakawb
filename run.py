@@ -10,6 +10,7 @@ import pitchclass
 import chordlabels
 import heat
 import midi_reverser
+import midi_message
 
 major_keys = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B']
 minor_keys = [k.lower() for k in major_keys]
@@ -20,7 +21,7 @@ def initLogger():
     fh = logging.FileHandler('hakawb.log', 'w')
     fh.setLevel(logging.DEBUG)
     ch = logging.StreamHandler()
-    ch.setLevel(logging.ERROR)
+    ch.setLevel(logging.INFO)
     logger.addHandler(fh)
     logger.addHandler(ch)
     return logger
@@ -73,9 +74,15 @@ if __name__ == '__main__':
     midi2pcheat = heat.Midi2PitchClassHeat(decay_damping=0.3, release_damping=0.05, scaling=True)
     reverser = midi_reverser.MidiReverser()
 
-    for msg in mid:
-        if msg.type != 'note_on' and msg.type != 'note_off':
+    for mido_msg in mid:
+        if mido_msg.type != 'note_on' and mido_msg.type != 'note_off':
             continue
+        msg = midi_message.MidiMessage(
+            mido_msg.type,
+            mido_msg.time,
+            mido_msg.note,
+            mido_msg.channel,
+            mido_msg.velocity)
         reverser.register_event(msg)
         midi2pcheat.parse_midi_event(msg)
         pc_heat = midi2pcheat.pc_heat
