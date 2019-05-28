@@ -11,6 +11,7 @@ import chordlabels
 import heat
 import midi_reverser
 import midi_wrapper
+import bass
 
 major_keys = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B']
 minor_keys = [k.lower() for k in major_keys]
@@ -66,14 +67,13 @@ if __name__ == '__main__':
     minor_pc_sets = get_pc_sets(chord.base_minor, minor_keys)
     pc_sets = instantiate_pc_sets(major_pc_sets, minor_pc_sets)
     # Now parse the input
-    bass = 128 # Larger than any midi note number for initialization
     pc_heat_dict = {}
     pc_set_activations = {pc_set.name: [] for pc_set in pc_sets}
     max_activations = {}
     basses = []
     midi2pcheat = heat.Midi2PitchClassHeat(decay_damping=0.3, release_damping=0.05, scaling=True)
     reverser = midi_reverser.MidiReverser()
-
+    bass_model = bass.BassModel()
     for mido_msg in mid:
         if mido_msg.type != 'note_on' and mido_msg.type != 'note_off':
             continue
@@ -87,10 +87,8 @@ if __name__ == '__main__':
         midi2pcheat.parse_midi_event(msg)
         pc_heat = midi2pcheat.pc_heat
         logger.debug(pc_heat)
-        if msg.note < bass:
-            logger.info("This note became the new bass")
-            bass = msg.note
-        basses.append(bass)
+        bass_model.register_event(msg)
+        basses.append(bass_model.bass)
         max_activation = (0, 'none')
         for pc_set in pc_sets:
             pc_set.compute_activation(pc_heat)
