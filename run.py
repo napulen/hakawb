@@ -10,7 +10,7 @@ import pitchclass
 import chordlabels
 import heat
 import midi_reverser
-import midi_message
+import midi_wrapper
 
 major_keys = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B']
 minor_keys = [k.lower() for k in major_keys]
@@ -77,7 +77,7 @@ if __name__ == '__main__':
     for mido_msg in mid:
         if mido_msg.type != 'note_on' and mido_msg.type != 'note_off':
             continue
-        msg = midi_message.MidiMessage(
+        msg = midi_wrapper.MidiMessage(
             mido_msg.type,
             mido_msg.time,
             mido_msg.note,

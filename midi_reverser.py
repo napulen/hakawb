@@ -1,4 +1,4 @@
-import midi_message
+import midi_wrapper
 
 class MidiReverser:
     def __init__(self):
@@ -21,7 +21,7 @@ class MidiReverser:
         # This deltatime is written in the msg at the top of the stack
         if msg.type != 'note_on' and msg.type != 'note_off':
             return
-        self.msg = midi_message.MidiMessage(
+        self.msg = midi_wrapper.MidiMessage(
             msg.type,
             msg.time,
             msg.note,
