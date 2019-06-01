@@ -59,9 +59,14 @@ def instantiate_pc_sets(major, minor):
     return pc_sets
 
 if __name__ == '__main__':
-    if len(sys.argv) == 2:
-        mid = mido.MidiFile(sys.argv[1])
     logger = initLogger()
+    if len(sys.argv) != 2:
+        logger.error('Usage: {} <input_file>.mid'.format(sys.argv[0]))
+        exit()
+    # Get the midi messages from a library using the wrapper
+    wrapper = midi_wrapper.MidoWrapper(sys.argv[1])
+    # Initialize the midi reverser
+    midi_rev = midi_reverser.MidiReverser()
     # Pre-compute all the chord dictionary
     major_pc_sets = get_pc_sets(chord.base_major, major_keys)
     minor_pc_sets = get_pc_sets(chord.base_minor, minor_keys)
@@ -72,22 +77,13 @@ if __name__ == '__main__':
     max_activations = {}
     basses = []
     midi2pcheat = heat.Midi2PitchClassHeat(decay_damping=0.3, release_damping=0.05, scaling=True)
-    reverser = midi_reverser.MidiReverser()
     bass_model = bass.BassModel()
-    for mido_msg in mid:
-        if mido_msg.type != 'note_on' and mido_msg.type != 'note_off':
-            continue
-        msg = midi_wrapper.MidiMessage(
-            mido_msg.type,
-            mido_msg.time,
-            mido_msg.note,
-            mido_msg.channel,
-            mido_msg.velocity)
-        reverser.register_event(msg)
-        midi2pcheat.parse_midi_event(msg)
+    for msg in wrapper.midi_messages:
+        midi_rev.dispatch(msg)
+        midi2pcheat.dispatch(msg)
         pc_heat = midi2pcheat.pc_heat
         logger.debug(pc_heat)
-        bass_model.register_event(msg)
+        bass_model.dispatch(msg)
         basses.append(bass_model.bass)
         max_activation = (0, 'none')
         for pc_set in pc_sets:
@@ -112,10 +108,10 @@ if __name__ == '__main__':
     pc_set_activations = {pc_set.name: [] for pc_set in pc_sets}
     max_activations = {}
     midi2pcheat = heat.Midi2PitchClassHeat(decay_damping=0.3, release_damping=0.05, scaling=True)
-    for msg in reverser.reverse():
+    for msg in midi_rev.reverse():
         if msg.type != 'note_on' and msg.type != 'note_off':
             continue
-        midi2pcheat.parse_midi_event(msg)
+        midi2pcheat.dispatch(msg)
         pc_heat = midi2pcheat.pc_heat
         logger.debug(pc_heat)
         max_activation = (0, 'none')

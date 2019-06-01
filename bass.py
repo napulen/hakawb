@@ -6,7 +6,7 @@ class BassModel:
         # Larger than any midi note number for initialization
         self.bass = 128
 
-    def register_event(self, msg):
+    def dispatch(self, msg):
         if msg.note < self.bass:
             self.logger.info("This note became the new bass")
             self.bass = msg.note

@@ -76,7 +76,7 @@ class Midi2PitchClassHeat:
         denominator = max(1.0, max(self.pc_heat))
         self.pc_heat = [heat / denominator for heat in self.pc_heat]
 
-    def parse_midi_event(self, msg):
+    def dispatch(self, msg):
         # Just care about note_on/note_off events
         if msg.type != 'note_on' and msg.type != 'note_off':
             return

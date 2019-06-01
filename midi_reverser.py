@@ -17,7 +17,7 @@ class MidiReverser:
             self.msg.velocity = 0
             self.msg.type ='note_on'
 
-    def register_event(self, msg):
+    def dispatch(self, msg):
         # This deltatime is written in the msg at the top of the stack
         if msg.type != 'note_on' and msg.type != 'note_off':
             return
