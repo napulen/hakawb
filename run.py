@@ -1,7 +1,6 @@
 import logging
 import numpy as np
 import pprint as pp
-import mido
 import sys
 import math
 import chord
@@ -76,12 +75,12 @@ if __name__ == '__main__':
     pc_set_activations = {pc_set.name: [] for pc_set in pc_sets}
     max_activations = {}
     basses = []
-    midi2pcheat = heat.Midi2PitchClassHeat(decay_damping=0.3, release_damping=0.05, scaling=True)
+    forward = heat.Midi2PitchClassHeat(decay_damping=0.3, release_damping=0.05, scaling=True)
     bass_model = bass.BassModel()
     for msg in wrapper.midi_messages:
         midi_rev.dispatch(msg)
-        midi2pcheat.dispatch(msg)
-        pc_heat = midi2pcheat.pc_heat
+        forward.dispatch(msg)
+        pc_heat = forward.pc_heat
         logger.debug(pc_heat)
         bass_model.dispatch(msg)
         basses.append(bass_model.bass)
@@ -91,7 +90,7 @@ if __name__ == '__main__':
             if pc_set.activation > max_activation[0]:
                 max_activation = (pc_set.activation, pc_set.pc_set)
             pc_set_activations[pc_set.name].append('{:.2f}'.format(pc_set.activation))
-        max_activations[midi2pcheat.t] = max_activation
+        max_activations[forward.t] = max_activation
 
     for pc in pc_heat_dict:
         logger.info('{}: {}'.format(pc, pc_heat_dict[pc]))
@@ -107,12 +106,12 @@ if __name__ == '__main__':
     pc_heat_dict = {}
     pc_set_activations = {pc_set.name: [] for pc_set in pc_sets}
     max_activations = {}
-    midi2pcheat = heat.Midi2PitchClassHeat(decay_damping=0.3, release_damping=0.05, scaling=True)
+    backward = heat.Midi2PitchClassHeat(decay_damping=0.3, release_damping=0.05, scaling=True)
     for msg in midi_rev.reverse():
         if msg.type != 'note_on' and msg.type != 'note_off':
             continue
-        midi2pcheat.dispatch(msg)
-        pc_heat = midi2pcheat.pc_heat
+        backward.dispatch(msg)
+        pc_heat = backward.pc_heat
         logger.debug(pc_heat)
         max_activation = (0, 'none')
         for pc_set in pc_sets:
@@ -120,7 +119,7 @@ if __name__ == '__main__':
             if pc_set.activation > max_activation[0]:
                 max_activation = (pc_set.activation, pc_set.pc_set)
             pc_set_activations[pc_set.name].append('{:.2f}'.format(pc_set.activation))
-        max_activations[midi2pcheat.t] = max_activation
+        max_activations[backward.t] = max_activation
 
     for pc in pc_heat_dict:
         logger.info('{}: {}'.format(pc, pc_heat_dict[pc]))
