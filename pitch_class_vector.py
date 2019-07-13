@@ -38,13 +38,12 @@ class PitchClassVector:
         self.energythreshold = 0.001
         self.pc_energy = []
         self.output = []
-        self.reversed = reverse
+        self.reverse = reverse
         self.scaling = scaling
         self.t = 0
         self.dt = 0
         self.decay_damping = decay_damping
         self.release_damping = release_damping
-
 
     def get_midi_event_id(self, msg):
         # The idea is that a related note_on and note_off
@@ -78,11 +77,11 @@ class PitchClassVector:
     def scaling_pitchclass_energy(self):
         self.logger.debug(self.pc_energy)
         self.pc_energy = [self.energy_non_linearity(energy) for energy in self.pc_energy]
-        self.logger.debug(self.pc_energy)
         # If the max value of the pc energy vector is < 1, then don't scale anything
         # else, scale everything accordingly so that max_val == 1.0
         denominator = max(1.0, max(self.pc_energy))
         self.pc_energy = [energy / denominator for energy in self.pc_energy]
+        self.logger.debug(self.pc_energy)
 
     def dispatch(self, msg):
         # Just care about note_on/note_off events
@@ -119,7 +118,7 @@ class PitchClassVector:
             self.scaling_pitchclass_energy()
         self.output.append(self.pc_energy)
 
-    def output(self):
+    def iterator(self):
         if not self.reverse:
             for pc_energy in self.output:
                 yield pc_energy

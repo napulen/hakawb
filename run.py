@@ -20,8 +20,12 @@ def initLogger():
     logger.setLevel(logging.DEBUG)
     fh = logging.FileHandler('hakawb.log', 'w')
     fh.setLevel(logging.DEBUG)
+    fhfrm = logging.Formatter('%(asctime)s [%(name)-30s] %(levelname)-7s: %(message)s')
+    fh.setFormatter(fhfrm)
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
+    chfrm = logging.Formatter('[%(name)-30s] %(levelname)-7s: %(message)s')
+    ch.setFormatter(chfrm)
     logger.addHandler(fh)
     logger.addHandler(ch)
     return logger
@@ -106,7 +110,7 @@ if __name__ == '__main__':
     # pc_heat_dict = {}
     # pc_set_activations = {pc_set.name: [] for pc_set in pc_sets}
     # max_activations = {}
-    backward = pitch_class_vector.PitchClassVector(decay_damping=0.3, release_damping=0.05, scaling=True)
+    backward = pitch_class_vector.PitchClassVector(decay_damping=0.3, release_damping=0.05, scaling=True, reverse=True)
     for msg in midi_rev.output():
         backward.dispatch(msg)
     #     pc_energy = backward.pc_energy
@@ -137,3 +141,6 @@ if __name__ == '__main__':
 
     # for i in range(len(backward_labels)):
     #     print('{:<10}'.format(backward_labels[i]), end='')
+    for fwd, bwd in zip(forward.iterator(), backward.iterator()):
+        symbolic_chromagram = [(fwd[i] + bwd[i]) / 2 for i in range(12)]
+        print(symbolic_chromagram)
