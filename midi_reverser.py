@@ -32,6 +32,6 @@ class MidiReverser:
         self.update_msg()
         self.midi_stack.append(self.msg)
 
-    def reverse(self):
+    def output(self):
         while self.midi_stack:
             yield self.midi_stack.pop()

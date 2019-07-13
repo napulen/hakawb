@@ -7,7 +7,7 @@ import chord
 import pcset
 import pitchclass
 import chordlabels
-import heat
+import pitch_class_vector
 import midi_reverser
 import midi_wrapper
 import bass
@@ -21,7 +21,7 @@ def initLogger():
     fh = logging.FileHandler('hakawb.log', 'w')
     fh.setLevel(logging.DEBUG)
     ch = logging.StreamHandler()
-    ch.setLevel(logging.INFO)
+    ch.setLevel(logging.DEBUG)
     logger.addHandler(fh)
     logger.addHandler(ch)
     return logger
@@ -71,71 +71,69 @@ if __name__ == '__main__':
     minor_pc_sets = get_pc_sets(chord.base_minor, minor_keys)
     pc_sets = instantiate_pc_sets(major_pc_sets, minor_pc_sets)
     # Now parse the input
-    pc_heat_dict = {}
-    pc_set_activations = {pc_set.name: [] for pc_set in pc_sets}
-    max_activations = {}
-    basses = []
-    forward = heat.Midi2PitchClassHeat(decay_damping=0.3, release_damping=0.05, scaling=True)
+    # pc_heat_dict = {}
+    # pc_set_activations = {pc_set.name: [] for pc_set in pc_sets}
+    # max_activations = {}
+    # basses = []
+    forward = pitch_class_vector.PitchClassVector(decay_damping=0.3, release_damping=0.05, scaling=True)
     bass_model = bass.BassModel()
     for msg in wrapper.midi_messages:
         midi_rev.dispatch(msg)
         forward.dispatch(msg)
-        pc_heat = forward.pc_heat
-        logger.debug(pc_heat)
-        bass_model.dispatch(msg)
-        basses.append(bass_model.bass)
-        max_activation = (0, 'none')
-        for pc_set in pc_sets:
-            pc_set.compute_activation(pc_heat)
-            if pc_set.activation > max_activation[0]:
-                max_activation = (pc_set.activation, pc_set.pc_set)
-            pc_set_activations[pc_set.name].append('{:.2f}'.format(pc_set.activation))
-        max_activations[forward.t] = max_activation
+        # pc_heat = forward.pc_heat
+        # logger.debug(pc_heat)
+        # bass_model.dispatch(msg)
+        # basses.append(bass_model.bass)
+        # max_activation = (0, 'none')
+        # for pc_set in pc_sets:
+        #     pc_set.compute_activation(pc_heat)
+        #     if pc_set.activation > max_activation[0]:
+        #         max_activation = (pc_set.activation, pc_set.pc_set)
+        #     pc_set_activations[pc_set.name].append('{:.2f}'.format(pc_set.activation))
+        # max_activations[forward.t] = max_activation
 
-    for pc in pc_heat_dict:
-        logger.info('{}: {}'.format(pc, pc_heat_dict[pc]))
-    logger.info('{:<30} {}'.format('Basses', basses))
-    for name, activation_list in pc_set_activations.items():
-        logger.info('{:<30} {}'.format(name, activation_list))
+    # for pc in pc_heat_dict:
+    #     logger.info('{}: {}'.format(pc, pc_heat_dict[pc]))
+    # logger.info('{:<30} {}'.format('Basses', basses))
+    # for name, activation_list in pc_set_activations.items():
+    #     logger.info('{:<30} {}'.format(name, activation_list))
 
-    for pc_activation in max_activations:
-        logger.info('{}: {} - {}'.format(pc_activation, max_activations[pc_activation], chordlabels.chord_labels[max_activations[pc_activation][1]]))
+    # for pc_activation in max_activations:
+    #     logger.info('{}: {} - {}'.format(pc_activation, max_activations[pc_activation], chordlabels.chord_labels[max_activations[pc_activation][1]]))
 
-    forward_labels = [chordlabels.chord_labels[max_activations[pc_activation][1]] for pc_activation in max_activations]
+    # forward_labels = [chordlabels.chord_labels[max_activations[pc_activation][1]] for pc_activation in max_activations]
 
-    pc_heat_dict = {}
-    pc_set_activations = {pc_set.name: [] for pc_set in pc_sets}
-    max_activations = {}
-    backward = heat.Midi2PitchClassHeat(decay_damping=0.3, release_damping=0.05, scaling=True)
-    for msg in midi_rev.reverse():
-        if msg.type != 'note_on' and msg.type != 'note_off':
-            continue
+    # pc_heat_dict = {}
+    # pc_set_activations = {pc_set.name: [] for pc_set in pc_sets}
+    # max_activations = {}
+    backward = pitch_class_vector.PitchClassVector(decay_damping=0.3, release_damping=0.05, scaling=True)
+    for msg in midi_rev.output():
         backward.dispatch(msg)
-        pc_heat = backward.pc_heat
-        logger.debug(pc_heat)
-        max_activation = (0, 'none')
-        for pc_set in pc_sets:
-            pc_set.compute_activation(pc_heat)
-            if pc_set.activation > max_activation[0]:
-                max_activation = (pc_set.activation, pc_set.pc_set)
-            pc_set_activations[pc_set.name].append('{:.2f}'.format(pc_set.activation))
-        max_activations[backward.t] = max_activation
+    #     pc_energy = backward.pc_energy
+    #     logger.debug(pc_energy)
+    #     max_activation = (0, 'none')
+    #     for pc_set in pc_sets:
+    #         pc_set.compute_activation(pc_heat)
+    #         if pc_set.activation > max_activation[0]:
+    #             max_activation = (pc_set.activation, pc_set.pc_set)
+    #         pc_set_activations[pc_set.name].append('{:.2f}'.format(pc_set.activation))
+    #     max_activations[backward.t] = max_activation
 
-    for pc in pc_heat_dict:
-        logger.info('{}: {}'.format(pc, pc_heat_dict[pc]))
-    for name, activation_list in pc_set_activations.items():
-        logger.info('{:<30} {}'.format(name, activation_list))
+    # for pc in pc_heat_dict:
+    #     logger.info('{}: {}'.format(pc, pc_heat_dict[pc]))
+    # for name, activation_list in pc_set_activations.items():
+    #     logger.info('{:<30} {}'.format(name, activation_list))
 
-    for pc_activation in max_activations:
-        logger.info('{}: {} - {}'.format(pc_activation, max_activations[pc_activation], chordlabels.chord_labels[max_activations[pc_activation][1]]))
+    # for pc_activation in max_activations:
+    #     logger.info('{}: {} - {}'.format(pc_activation, max_activations[pc_activation], chordlabels.chord_labels[max_activations[pc_activation][1]]))
 
-    backward_labels = [chordlabels.chord_labels[max_activations[pc_activation][1]] for pc_activation in max_activations]
-    backward_labels = list(reversed(backward_labels))
+    # backward_labels = [chordlabels.chord_labels[max_activations[pc_activation][1]] for pc_activation in max_activations]
+    # backward_labels = list(reversed(backward_labels))
 
-    for i in range(len(forward_labels)):
-        print('{:<10}'.format(forward_labels[i]), end='')
+    # for i in range(len(forward_labels)):
+    #     print('{:<10}'.format(forward_labels[i]), end='')
 
-    print()
+    # print()
 
-    for i in range(len(backward_labels)):
-        print('{:<10}'.format(backward_labels[i]), end='')
+    # for i in range(len(backward_labels)):
+    #     print('{:<10}'.format(backward_labels[i]), end='')
